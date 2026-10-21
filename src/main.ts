@@ -113,7 +113,8 @@ async function refresh() {
     $("#error").hidden = true;
     const list = $("#games");
     list.replaceChildren(...games.map(card));
-    if (!games.length) list.append(el("p", "empty muted", "No games to watch right now. See the schedule below."));
+    // With nothing to watch, the schedule moves up under the header.
+    list.hidden = !games.length;
     const live = games.filter((g) => g.live).length;
     $("#subtitle").textContent =
       `${games.length} game${games.length === 1 ? "" : "s"}` + (live ? ` · ${live} live` : "") +

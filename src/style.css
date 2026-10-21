@@ -156,12 +156,6 @@ form p {
   gap: 14px;
 }
 
-.empty {
-  grid-column: 1 / -1;
-  text-align: center;
-  padding: 60px 0;
-}
-
 .game {
   display: flex;
   flex-direction: column;
@@ -240,6 +234,14 @@ picture {
 
 #schedule {
   margin-top: 36px;
+}
+
+#games[hidden] {
+  display: none;
+}
+
+#games[hidden] + #schedule {
+  margin-top: 0;
 }
 
 h2 {
