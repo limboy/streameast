@@ -34,7 +34,7 @@ func openPlayer(site string, game Game) {
 	if err != nil {
 		return
 	}
-	config, _ := json.Marshal(map[string]string{"path": game.Path})
+	config, _ := json.Marshal(map[string]string{"title": game.Away.Name + " @ " + game.Home.Name, "path": game.Path})
 	win := mygo.NewWindow(mygo.WindowOptions{
 		Title:           game.Title(),
 		Width:           1280,
@@ -43,6 +43,11 @@ func openPlayer(site string, game Game) {
 		MinHeight:       300,
 		BackgroundColor: "#000000",
 		StateKey:        "player",
+		// player.js draws the title bar, 40 px tall, with the servers in
+		// it, above the video and clear of the player's own controls.
+		TitleBarStyle:        mygo.TitleBarHidden,
+		TitleBarHeight:       40,
+		TrafficLightPosition: &mygo.Point{X: 14, Y: 14},
 		URL:             strings.TrimRight(site, "/") + game.Path + "1",
 		Page: mygo.PageOptions{
 			UserAgent:     userAgent,

@@ -1,5 +1,5 @@
 // Runs in the game's page before its own scripts (PageOptions.PreloadScript).
-// window.__NBA_PLAYER__ = { path } comes from player.go.
+// window.__NBA_PLAYER__ = { title, path } comes from player.go.
 (() => {
   const cfg = window.__NBA_PLAYER__ || {};
 
@@ -31,28 +31,32 @@
     html, body { background: #000 !important; overflow: hidden !important; }
     body * { visibility: hidden !important; }
     #iframe, #iframe * { visibility: visible !important; }
+    :root { --nba-bar: 40px; }
+    :root.nba-fullscreen { --nba-bar: 0px; }
     #iframe {
-      position: fixed !important; inset: 0 !important;
-      width: 100vw !important; height: 100vh !important;
+      position: fixed !important; inset: var(--nba-bar) 0 0 0 !important;
+      width: 100vw !important; height: calc(100vh - var(--nba-bar)) !important;
       max-width: none !important; max-height: none !important;
       margin: 0 !important; border: 0 !important; z-index: 2147483000 !important;
     }
-    #nba-hot { position: fixed; top: 0; right: 0; width: 240px; height: 56px; z-index: 2147483646; visibility: visible !important; }
     #nba-bar, #nba-bar *, #nba-msg, #nba-msg * { visibility: visible !important; }
     #nba-bar {
-      --surface: rgb(255 255 255 / .82); --ink: #1d2129; --hover: rgb(0 0 0 / .07); --edge: rgb(0 0 0 / .1);
-      position: fixed; top: 12px; right: 12px; z-index: 2147483647;
-      display: flex; align-items: center; gap: 2px; padding: 3px;
+      --surface: #ececee; --ink: #1d2129; --muted: #6b7280; --hover: rgb(0 0 0 / .07); --edge: rgb(0 0 0 / .1);
+      position: fixed; top: 0; left: 0; right: 0; height: var(--nba-bar); z-index: 2147483647;
+      display: flex; align-items: center; gap: 2px; box-sizing: border-box;
+      padding: 0 8px 0 calc(var(--mygo-titlebar-inset-left, 0px) + 8px);
       font: 600 12px/1 -apple-system, system-ui, sans-serif; color: var(--ink);
-      background: var(--surface); border: 1px solid var(--edge); border-radius: 10px;
-      -webkit-backdrop-filter: blur(16px) saturate(1.6); backdrop-filter: blur(16px) saturate(1.6);
-      box-shadow: 0 4px 16px rgb(0 0 0 / .25);
-      transition: opacity .2s, transform .2s;
+      background: var(--surface); border-bottom: 1px solid var(--edge);
+      --app-region: drag; -webkit-user-select: none; user-select: none; overflow: hidden;
     }
+    :root.nba-fullscreen #nba-bar { display: none; }
     @media (prefers-color-scheme: dark) {
-      #nba-bar { --surface: rgb(28 31 38 / .78); --ink: #eef0f4; --hover: rgb(255 255 255 / .1); --edge: rgb(255 255 255 / .12); }
+      #nba-bar { --surface: #1c1f26; --ink: #eef0f4; --muted: #9aa0a6; --hover: rgb(255 255 255 / .1); --edge: rgb(255 255 255 / .1); }
     }
-    #nba-bar.hide { opacity: 0; transform: translateY(-6px); pointer-events: none; }
+    #nba-bar .t {
+      margin-right: auto; padding-right: 12px; color: var(--muted); font-weight: 500; font-size: 13px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
     #nba-bar button {
       font: inherit; color: inherit; cursor: pointer; background: none; border: 0;
       min-width: 28px; height: 26px; padding: 0 8px; border-radius: 7px;
@@ -63,7 +67,7 @@
     #nba-bar .sep { width: 1px; height: 16px; margin: 0 3px; background: var(--edge); }
     #nba-bar svg { width: 14px; height: 14px; }
     #nba-msg {
-      position: fixed; inset: 0; display: grid; place-content: center; gap: 8px; text-align: center;
+      position: fixed; inset: var(--nba-bar) 0 0 0; display: grid; place-content: center; gap: 8px; text-align: center;
       font: 15px -apple-system, system-ui, sans-serif; color: #c8ccd4; z-index: 2147482000;
     }
     #nba-msg b { color: #fff; font-size: 18px; }
@@ -82,10 +86,14 @@
       .map((a) => ({ name: a.textContent.trim(), href: a.getAttribute("href") }))
       .filter((s) => s.href && s.href.startsWith(cfg.path));
 
-    // A small picker in the top-right corner: the servers by number, then
-    // reload. The window title already names the game.
+    // The title bar, above the video: the game, then the servers by number
+    // and reload on the right.
     const bar = document.createElement("div");
     bar.id = "nba-bar";
+    const title = document.createElement("span");
+    title.className = "t";
+    title.textContent = cfg.title || "";
+    bar.append(title);
     for (const s of servers) {
       const b = document.createElement("button");
       b.textContent = s.name.replace(/^Server\s*/i, "");
@@ -103,24 +111,17 @@
     reload.onclick = () => location.reload();
     bar.append(sep, reload);
 
-    const hot = document.createElement("div");
-    hot.id = "nba-hot";
-    document.body.append(hot, bar);
+    document.body.append(bar);
 
-    // The picker hides while the video plays; moving the pointer to the
-    // top-right corner, or over the page outside the video, brings it back.
-    let timer;
-    const show = () => {
-      bar.classList.remove("hide");
-      clearTimeout(timer);
-      timer = setTimeout(() => {
-        if (!bar.matches(":hover")) bar.classList.add("hide");
-      }, 2500);
+    // In full screen the window controls hide and MyGo reports a title bar
+    // of 0px: the bar goes too, and the video fills the screen.
+    const fit = () => {
+      const h = getComputedStyle(document.documentElement).getPropertyValue("--mygo-titlebar-height").trim();
+      document.documentElement.classList.toggle("nba-fullscreen", h === "0px");
     };
-    hot.addEventListener("mouseenter", show);
-    bar.addEventListener("mouseleave", show);
-    document.addEventListener("mousemove", show);
-    show();
+    addEventListener("resize", fit);
+    new MutationObserver(fit).observe(document.documentElement, { attributes: true, attributeFilter: ["style"] });
+    fit();
 
     if (!document.querySelector("#iframe")) {
       const msg = document.createElement("div");
