@@ -178,6 +178,15 @@ func (n *NBA) Games(ctx context.Context) ([]Game, error) {
 	return games, nil
 }
 
+// Schedule lists the games of the next few days, from ESPN.
+func (n *NBA) Schedule(ctx context.Context) ([]ScheduledGame, error) {
+	games, err := FetchSchedule(ctx, 3)
+	if games == nil {
+		games = []ScheduledGame{}
+	}
+	return games, err
+}
+
 // Watch opens the game in a player window, or brings its window forward
 // when it is already open.
 func (n *NBA) Watch(game Game) {

@@ -30,6 +30,17 @@ export interface Game {
   status: string;
 }
 
+/** ScheduledGame is an upcoming game from ESPN's schedule. */
+export interface ScheduledGame {
+  id: string;
+  home: Team;
+  away: Team;
+  /** Unix seconds */
+  start: number;
+  /** "ESPN", "TNT" */
+  broadcasts: string[];
+}
+
 /**
  * Settings are the user's choices, kept in settings.json in the user data
  * directory.
@@ -65,6 +76,10 @@ export const NBA = {
   /** Games lists today's NBA games, live ones first. */
   games(): Promise<Game[]> {
     return call("NBA.Games");
+  },
+  /** Schedule lists the games of the next few days, from ESPN. */
+  schedule(): Promise<ScheduledGame[]> {
+    return call("NBA.Schedule");
   },
   /**
    * SetSite checks that site, a domain or URL such as "streameast.ga", lists

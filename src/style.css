@@ -234,6 +234,88 @@ form p {
   font-weight: 600;
 }
 
+#schedule {
+  margin-top: 36px;
+}
+
+h2 {
+  font-size: 18px;
+  letter-spacing: -0.01em;
+  margin: 0 0 12px;
+}
+
+.day {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 4px 16px;
+  margin-bottom: 12px;
+}
+
+.day h3 {
+  font-size: 13px;
+  font-weight: 600;
+  margin: 10px 0 4px;
+}
+
+.day h3 .muted {
+  font-weight: 400;
+}
+
+.day .none {
+  font-size: 13px;
+  margin: 6px 0 12px;
+}
+
+.match {
+  display: grid;
+  /* A fixed TV column keeps the teams lined up from row to row. */
+  grid-template-columns: 72px minmax(0, 1fr) 16px minmax(0, 1fr) minmax(0, 160px);
+  align-items: center;
+  gap: 8px;
+  padding: 9px 0;
+  font-size: 14px;
+  border-top: 1px solid var(--line);
+}
+
+.day h3 + .match {
+  border-top: 0;
+}
+
+.match .time {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.match .side {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.match .at {
+  text-align: center;
+  font-size: 12px;
+}
+
+.match .tv {
+  font-size: 12px;
+  text-align: right;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.logo.small {
+  width: 22px;
+  height: 22px;
+  flex: none;
+}
+
 .team .score {
   font-size: 18px;
   font-weight: 700;

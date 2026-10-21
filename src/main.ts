@@ -1,5 +1,5 @@
 // NBA is generated from the Go code by `mygo generate`.
-import { NBA, type Game, type Team } from "./mygo";
+import { NBA, type Game, type ScheduledGame, type Team } from "./mygo";
 
 const $ = <T extends HTMLElement>(selector: string) => document.querySelector<T>(selector)!;
 
@@ -35,6 +35,60 @@ function card(game: Game) {
   c.append(head, team(game.away, "away"), team(game.home, "home"));
   c.onclick = () => NBA.watch(game);
   return c;
+}
+
+const SCHEDULE_DAYS = 3;
+
+const dayKey = (d: Date) => `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+
+function scheduleRow(game: ScheduledGame) {
+  const row = el("div", "match");
+  const side = (t: Team) => {
+    const s = el("span", "side");
+    const logo = el("img", "logo small");
+    logo.alt = "";
+    if (t.logo) logo.src = t.logo;
+    logo.onerror = () => logo.classList.add("missing");
+    s.append(logo, el("span", "", t.short || t.name));
+    s.title = t.name;
+    return s;
+  };
+  row.append(
+    el("span", "time", new Date(game.start * 1000).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })),
+    side(game.away),
+    el("span", "at muted", "@"),
+    side(game.home),
+    el("span", "tv muted", game.broadcasts.join(" · ")),
+  );
+  return row;
+}
+
+// The games of the next SCHEDULE_DAYS days, by the user's own dates.
+async function loadSchedule() {
+  const days = $("#days");
+  let games: ScheduledGame[];
+  try {
+    games = await NBA.schedule();
+  } catch (err) {
+    days.replaceChildren(el("p", "error", `Couldn't load the schedule: ${err instanceof Error ? err.message : err}`));
+    return;
+  }
+  const groups: HTMLElement[] = [];
+  const today = new Date();
+  for (let i = 1; i <= SCHEDULE_DAYS; i++) {
+    const day = new Date(today.getFullYear(), today.getMonth(), today.getDate() + i);
+    const matches = games.filter((g) => dayKey(new Date(g.start * 1000)) === dayKey(day));
+    const date = day.toLocaleDateString([], { weekday: "short", month: "short", day: "numeric" });
+    const group = el("div", "day");
+    const head = el("h3");
+    head.append(el("span", "", i === 1 ? "Tomorrow" : day.toLocaleDateString([], { weekday: "long" })));
+    head.append(el("span", "muted", ` · ${date}`));
+    group.append(head);
+    if (matches.length) group.append(...matches.map(scheduleRow));
+    else group.append(el("p", "muted none", "No games"));
+    groups.push(group);
+  }
+  days.replaceChildren(...groups);
 }
 
 let loading = false;
@@ -151,7 +205,11 @@ $("#settings").addEventListener("submit", async (e) => {
 });
 
 refresh();
+loadSchedule();
 // Scores and live states change: keep them fresh while the window is open.
+// The schedule is cached for 10 minutes in Go, and rolls over at midnight.
 setInterval(() => {
-  if (!document.hidden) refresh();
+  if (document.hidden) return;
+  refresh();
+  loadSchedule();
 }, 60_000);
