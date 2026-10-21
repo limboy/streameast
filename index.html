@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>NBA</title>
+    <link rel="stylesheet" href="./src/style.css" />
+  </head>
+  <body>
+    <header>
+      <div>
+        <h1>NBA</h1>
+        <p id="subtitle" class="muted">Loading games…</p>
+      </div>
+      <div class="actions">
+        <button id="refresh" title="Refresh (⌘R)">Refresh</button>
+        <button id="open-settings" title="Change the streameast domain">Domain</button>
+      </div>
+    </header>
+
+    <form id="settings" hidden>
+      <label for="site-select">Streameast domain</label>
+      <div class="row">
+        <select id="site-select"></select>
+        <button type="button" id="recheck" title="Check the domains again">Recheck</button>
+      </div>
+      <div class="row" id="custom" hidden>
+        <input id="site" placeholder="v2.streameast.ga" autocomplete="off" spellcheck="false" />
+        <button type="submit">Use</button>
+      </div>
+      <p id="settings-msg" class="muted">The site moves between domains. Pick one that works, or enter another.</p>
+    </form>
+
+    <p id="error" class="error" hidden></p>
+    <main id="games"></main>
+
+    <script type="module" src="./src/main.ts"></script>
+  </body>
+</html>
