@@ -27,8 +27,16 @@ func TestParseGames(t *testing.T) {
 	want := Game{
 		ID:   "47191",
 		Path: "/nba/philadelphia-76ers-vs-new-york-knicks-4/",
-		Home: Team{Name: "Philadelphia 76ers", Short: "76ers", Logo: "https://v2.streameast.ga/images/philadelphia-76ers.svg", Score: "88"},
-		Away: Team{Name: "New York Knicks", Short: "Knicks", Logo: "https://v2.streameast.ga/images/new-york-knicks.svg", Score: "86"},
+		Home: Team{
+			Name: "Philadelphia 76ers", Short: "76ers", Score: "88",
+			Logo:     "https://a.espncdn.com/i/teamlogos/nba/500/phi.png",
+			LogoDark: "https://a.espncdn.com/i/teamlogos/nba/500-dark/phi.png",
+		},
+		Away: Team{
+			Name: "New York Knicks", Short: "Knicks", Score: "86",
+			Logo:     "https://a.espncdn.com/i/teamlogos/nba/500/ny.png",
+			LogoDark: "https://a.espncdn.com/i/teamlogos/nba/500-dark/ny.png",
+		},
 		Start: 1792537200, Live: true, Status: "4th",
 	}
 	if g != want {

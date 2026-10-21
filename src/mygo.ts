@@ -60,6 +60,8 @@ export interface Team {
   short: string;
   /** an absolute URL, or "" */
   logo: string;
+  /** the logo for dark backgrounds */
+  logoDark: string;
   /** "" before the game */
   score: string;
 }

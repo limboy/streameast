@@ -13,13 +13,26 @@ const el = <K extends keyof HTMLElementTagNameMap>(tag: K, className = "", text 
 const startTime = (game: Game) =>
   new Date(game.start * 1000).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
 
+// The team's logo, in its light or dark version as the system's theme is.
+function logo(t: Team, className: string) {
+  const picture = el("picture");
+  if (t.logoDark && t.logoDark !== t.logo) {
+    const dark = el("source");
+    dark.media = "(prefers-color-scheme: dark)";
+    dark.srcset = t.logoDark;
+    picture.append(dark);
+  }
+  const img = el("img", className);
+  img.alt = "";
+  if (t.logo) img.src = t.logo;
+  img.onerror = () => img.classList.add("missing");
+  picture.append(img);
+  return picture;
+}
+
 function team(t: Team, side: string) {
   const row = el("div", `team ${side}`);
-  const logo = el("img", "logo");
-  logo.alt = "";
-  if (t.logo) logo.src = t.logo;
-  logo.onerror = () => logo.classList.add("missing");
-  row.append(logo, el("span", "name", t.short || t.name), el("span", "score", t.score));
+  row.append(logo(t, "logo"), el("span", "name", t.short || t.name), el("span", "score", t.score));
   return row;
 }
 
@@ -45,11 +58,7 @@ function scheduleRow(game: ScheduledGame) {
   const row = el("div", "match");
   const side = (t: Team) => {
     const s = el("span", "side");
-    const logo = el("img", "logo small");
-    logo.alt = "";
-    if (t.logo) logo.src = t.logo;
-    logo.onerror = () => logo.classList.add("missing");
-    s.append(logo, el("span", "", t.short || t.name));
+    s.append(logo(t, "logo small"), el("span", "", t.short || t.name));
     s.title = t.name;
     return s;
   };
@@ -97,11 +106,14 @@ async function refresh() {
   loading = true;
   $("#refresh").classList.add("busy");
   try {
-    const games = await NBA.games();
+    // Cards are for games to watch: live ones and today's. The site also
+    // lists tomorrow's, which the schedule below shows instead.
+    const today = dayKey(new Date());
+    const games = (await NBA.games()).filter((g) => g.live || dayKey(new Date(g.start * 1000)) === today);
     $("#error").hidden = true;
     const list = $("#games");
     list.replaceChildren(...games.map(card));
-    if (!games.length) list.append(el("p", "empty muted", "No NBA games on the site right now."));
+    if (!games.length) list.append(el("p", "empty muted", "No games to watch right now. See the schedule below."));
     const live = games.filter((g) => g.live).length;
     $("#subtitle").textContent =
       `${games.length} game${games.length === 1 ? "" : "s"}` + (live ? ` · ${live} live` : "") +

@@ -93,6 +93,7 @@ func fetchScoreboard(ctx context.Context, date string) ([]ScheduledGame, error) 
 				Competitors []struct {
 					HomeAway string `json:"homeAway"`
 					Team     struct {
+						Abbreviation     string `json:"abbreviation"`
 						DisplayName      string `json:"displayName"`
 						ShortDisplayName string `json:"shortDisplayName"`
 						Logo             string `json:"logo"`
@@ -117,6 +118,7 @@ func fetchScoreboard(ctx context.Context, date string) ([]ScheduledGame, error) 
 		g := ScheduledGame{ID: e.ID, Start: start.Unix(), Broadcasts: []string{}}
 		for _, t := range c.Competitors {
 			team := Team{Name: t.Team.DisplayName, Short: t.Team.ShortDisplayName, Logo: t.Team.Logo}
+			team.setLogos(t.Team.Abbreviation)
 			if t.HomeAway == "home" {
 				g.Home = team
 			} else {

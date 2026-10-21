@@ -30,8 +30,9 @@ var client = func() *http.Client {
 type Team struct {
 	Name  string `json:"name"`  // "Philadelphia 76ers"
 	Short string `json:"short"` // "76ers"
-	Logo  string `json:"logo"`  // an absolute URL, or ""
-	Score string `json:"score"` // "" before the game
+	Logo     string `json:"logo"`     // an absolute URL, or ""
+	LogoDark string `json:"logoDark"` // the logo for dark backgrounds
+	Score    string `json:"score"`    // "" before the game
 }
 
 // Game is an NBA game listed by the site.
@@ -115,6 +116,7 @@ func parseGames(doc *html.Node, final *url.URL) []Game {
 			if side.Short == "" {
 				side.Short = side.Name
 			}
+			side.setLogos("")
 		}
 		g.Status = text(first(card, func(n *html.Node) bool { return hasClass(n, "m-card__pill-status") }))
 		games = append(games, g)
