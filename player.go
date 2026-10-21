@@ -4,6 +4,7 @@ import (
 	_ "embed"
 	"encoding/json"
 	"net/url"
+	"strconv"
 	"strings"
 	"sync"
 
@@ -22,7 +23,9 @@ var players = struct {
 	byPath map[string]*mygo.Window
 }{byPath: map[string]*mygo.Window{}}
 
-func openPlayer(site string, game Game) {
+// openPlayer opens game on server, and calls picked with the server the
+// user switches to.
+func openPlayer(site string, game Game, server int, picked func(server int)) {
 	players.Lock()
 	defer players.Unlock()
 	if win := players.byPath[game.Path]; win != nil {
@@ -48,7 +51,7 @@ func openPlayer(site string, game Game) {
 		TitleBarStyle:        mygo.TitleBarHidden,
 		TitleBarHeight:       40,
 		TrafficLightPosition: &mygo.Point{X: 14, Y: 14},
-		URL:             strings.TrimRight(site, "/") + game.Path + "1",
+		URL:             strings.TrimRight(site, "/") + game.Path + strconv.Itoa(server),
 		Page: mygo.PageOptions{
 			UserAgent:     userAgent,
 			PreloadScript: "window.__NBA_PLAYER__=" + string(config) + ";\n" + playerScript,
@@ -73,6 +76,28 @@ func openPlayer(site string, game Game) {
 			e.PreventDefault()
 		}
 	})
+	page.OnDidNavigate(func(rawURL string) {
+		if n := serverOf(game.Path, rawURL); n > 0 {
+			picked(n)
+		}
+	})
+}
+
+// serverOf returns the server a game page shows, 2 for "/nba/…/2", or 0.
+func serverOf(gamePath, rawURL string) int {
+	u, err := url.Parse(rawURL)
+	if err != nil {
+		return 0
+	}
+	rest, ok := strings.CutPrefix(u.Path, gamePath)
+	if !ok {
+		return 0
+	}
+	n, err := strconv.Atoi(strings.Trim(rest, "/"))
+	if err != nil || n < 1 {
+		return 0
+	}
+	return n
 }
 
 // allowedNavigation tells whether the player window may go to target: the

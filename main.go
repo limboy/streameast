@@ -24,7 +24,8 @@ const defaultSite = "https://v2.streameast.ga"
 // Settings are the user's choices, kept in settings.json in the user data
 // directory.
 type Settings struct {
-	Site string `json:"site"` // an origin, "https://v2.streameast.ga"
+	Site   string `json:"site"`             // an origin, "https://v2.streameast.ga"
+	Server int    `json:"server,omitempty"` // the server last watched, 1 when 0
 }
 
 // NBA is the service the game list calls.
@@ -190,7 +191,19 @@ func (n *NBA) Schedule(ctx context.Context) ([]ScheduledGame, error) {
 // Watch opens the game in a player window, or brings its window forward
 // when it is already open.
 func (n *NBA) Watch(game Game) {
-	openPlayer(n.site(), game)
+	s := n.Settings()
+	openPlayer(s.Site, game, max(s.Server, 1), n.setServer)
+}
+
+// setServer remembers the server the user picked, which the next game
+// opens on: some servers are down more often than others.
+func (n *NBA) setServer(server int) {
+	n.mu.Lock()
+	defer n.mu.Unlock()
+	if n.settings.Server != server {
+		n.settings.Server = server
+		n.save()
+	}
 }
 
 func main() {

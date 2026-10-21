@@ -36,6 +36,20 @@ func TestParseGames(t *testing.T) {
 	}
 }
 
+func TestServerOf(t *testing.T) {
+	path := "/nba/philadelphia-76ers-vs-new-york-knicks-4/"
+	for rawURL, want := range map[string]int{
+		"https://v2.streameast.ga" + path + "2":  2,
+		"https://v2.streameast.ga" + path + "3/": 3,
+		"https://v2.streameast.ga" + path:        0,
+		"https://v2.streameast.ga/connect.php":   0,
+	} {
+		if got := serverOf(path, rawURL); got != want {
+			t.Errorf("serverOf(%q) = %d, want %d", rawURL, got, want)
+		}
+	}
+}
+
 func TestAllowedNavigation(t *testing.T) {
 	site, _ := url.Parse("https://v2.streameast.ga")
 	path := "/nba/philadelphia-76ers-vs-new-york-knicks-4/"

@@ -48,6 +48,8 @@ export interface ScheduledGame {
 export interface Settings {
   /** an origin, "https://v2.streameast.ga" */
   site: string;
+  /** the server last watched, 1 when 0 */
+  server?: number;
 }
 
 /** Team is one side of a game. */
