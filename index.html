@@ -7,29 +7,18 @@
     <link rel="stylesheet" href="./src/style.css" />
   </head>
   <body>
-    <header>
-      <div>
-        <h1>NBA</h1>
-        <p id="subtitle" class="muted">Loading games…</p>
-      </div>
-      <div class="actions">
-        <button id="refresh" title="Refresh (⌘R)">Refresh</button>
-        <button id="open-settings" title="Change the streameast domain">Domain</button>
+    <header class="titlebar">
+      <div class="titlebar-controls">
+        <select id="source-select" class="source-select" aria-label="Streaming source"></select>
+        <button id="refresh" class="titlebar-btn" aria-label="Refresh">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M13.5 8a5.5 5.5 0 1 1-1.6-3.9"/>
+            <path d="M13.5 2.5v3h-3"/>
+          </svg>
+          <span id="refresh-tooltip" class="refresh-tooltip"></span>
+        </button>
       </div>
     </header>
-
-    <form id="settings" hidden>
-      <label for="site-select">Streameast domain</label>
-      <div class="row">
-        <select id="site-select"></select>
-        <button type="button" id="recheck" title="Check the domains again">Recheck</button>
-      </div>
-      <div class="row" id="custom" hidden>
-        <input id="site" placeholder="v2.streameast.ga" autocomplete="off" spellcheck="false" />
-        <button type="submit">Use</button>
-      </div>
-      <p id="settings-msg" class="muted">The site moves between domains. Pick one that works, or enter another.</p>
-    </form>
 
     <p id="error" class="error" hidden></p>
     <main id="games"></main>

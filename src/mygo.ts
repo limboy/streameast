@@ -6,10 +6,12 @@ import { call } from "mygo-runtime";
 
 /** Domain is a site that answered with NBA games. */
 export interface Domain {
-  /** the origin it ended at, "https://v2.streameast.ga" */
+  /** the origin it ended at, "https://streamseaste.cx" */
   site: string;
-  /** "v2.streameast.ga" */
+  /** "streamseaste.cx" */
   host: string;
+  /** "Streamseaste" or "StreamEast" */
+  provider: string;
   /** how long the NBA page took, in milliseconds */
   latency: number;
   games: number;
@@ -46,8 +48,10 @@ export interface ScheduledGame {
  * directory.
  */
 export interface Settings {
-  /** an origin, "https://v2.streameast.ga" */
+  /** an origin, "https://streamseaste.cx" or "https://v2.streameast.ga" */
   site: string;
+  /** provider ID: "streameast", "streamseaste" */
+  provider?: string;
   /** the server last watched, 1 when 0 */
   server?: number;
 }

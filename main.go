@@ -19,13 +19,14 @@ import (
 
 // defaultSite is where the app looks for streams until the user picks
 // another domain; the site moves between domains often.
-const defaultSite = "https://v2.streameast.ga"
+const defaultSite = "https://streamseaste.cx"
 
 // Settings are the user's choices, kept in settings.json in the user data
 // directory.
 type Settings struct {
-	Site   string `json:"site"`             // an origin, "https://v2.streameast.ga"
-	Server int    `json:"server,omitempty"` // the server last watched, 1 when 0
+	Site     string `json:"site"`               // an origin, "https://streamseaste.cx" or "https://v2.streameast.ga"
+	Provider string `json:"provider,omitempty"` // provider ID: "streameast", "streamseaste"
+	Server   int    `json:"server,omitempty"`   // the server last watched, 1 when 0
 }
 
 // NBA is the service the game list calls.
@@ -89,31 +90,46 @@ func (n *NBA) SetSite(ctx context.Context, site string) (Settings, error) {
 	if err != nil || u.Host == "" {
 		return n.Settings(), errors.New("that doesn't look like a domain")
 	}
-	_, origin, err := FetchGames(ctx, u.Scheme+"://"+u.Host)
-	if err != nil {
-		return n.Settings(), errors.New("couldn't load NBA games from " + u.Host + ": " + err.Error())
+
+	p := findProvider(u.Host)
+	games, origin, err := p.FetchGames(ctx, u.Scheme+"://"+u.Host)
+	if err != nil || len(games) == 0 {
+		// If preferred provider failed, try other providers in case it's a mirror of another site
+		for _, alt := range providers {
+			if alt.ID() == p.ID() {
+				continue
+			}
+			if g, o, e := alt.FetchGames(ctx, u.Scheme+"://"+u.Host); e == nil && len(g) > 0 {
+				p = alt
+				games = g
+				origin = o
+				err = nil
+				break
+			}
+		}
+	}
+	if err != nil || len(games) == 0 {
+		errMsg := "no NBA games found"
+		if err != nil {
+			errMsg = err.Error()
+		}
+		return n.Settings(), errors.New("couldn't load NBA games from " + u.Host + ": " + errMsg)
 	}
 	n.mu.Lock()
 	n.settings.Site = origin
+	n.settings.Provider = p.ID()
 	n.save()
 	n.mu.Unlock()
 	return n.Settings(), nil
 }
 
-// knownSites are domains the site has used. Several redirect to the same
-// one, and many go dark; Domains checks which work now.
-var knownSites = []string{
-	"v2.streameast.ga", "streameast.ga", "v2.streameast.ch", "streameast.ch",
-	"streameast.sk", "streameast.app", "the-streameast.io", "streameast.to",
-	"streameast.gd", "streameast.xyz", "streameast.gl", "thestreameast.co",
-}
-
 // Domain is a site that answered with NBA games.
 type Domain struct {
-	Site    string `json:"site"`    // the origin it ended at, "https://v2.streameast.ga"
-	Host    string `json:"host"`    // "v2.streameast.ga"
-	Latency int    `json:"latency"` // how long the NBA page took, in milliseconds
-	Games   int    `json:"games"`
+	Site     string `json:"site"`     // the origin it ended at, "https://streamseaste.cx"
+	Host     string `json:"host"`     // "streamseaste.cx"
+	Provider string `json:"provider"` // "Streamseaste" or "StreamEast"
+	Latency  int    `json:"latency"`  // how long the NBA page took, in milliseconds
+	Games    int    `json:"games"`
 }
 
 // Domains checks the known domains, and the current one, at once, and lists
@@ -122,23 +138,36 @@ func (n *NBA) Domains(ctx context.Context) []Domain {
 	// Working domains answer in a few seconds; dead ones hang until this.
 	ctx, cancel := context.WithTimeout(ctx, 7*time.Second)
 	defer cancel()
+
 	candidates := []string{n.site()}
-	for _, host := range knownSites {
-		candidates = append(candidates, "https://"+host)
+	for _, p := range providers {
+		for _, host := range p.KnownSites() {
+			candidates = append(candidates, "https://"+host)
+		}
 	}
+	slices.Sort(candidates)
+	candidates = slices.Compact(candidates)
+
 	var (
 		mu    sync.Mutex
 		wg    sync.WaitGroup
 		found = map[string]Domain{}
 	)
 	for _, site := range candidates {
+		site := site
 		wg.Go(func() {
 			start := time.Now()
-			games, origin, err := FetchGames(ctx, site)
-			if err != nil || !strings.Contains(origin, "streameast") {
+			p := findProvider(site)
+			games, origin, err := p.FetchGames(ctx, site)
+			if err != nil || len(games) == 0 {
 				return
 			}
-			d := Domain{Site: origin, Latency: int(time.Since(start).Milliseconds()), Games: len(games)}
+			d := Domain{
+				Site:     origin,
+				Provider: p.Name(),
+				Latency:  int(time.Since(start).Milliseconds()),
+				Games:    len(games),
+			}
 			if u, err := url.Parse(origin); err == nil {
 				d.Host = u.Host
 			}
@@ -162,7 +191,9 @@ func (n *NBA) Domains(ctx context.Context) []Domain {
 
 // Games lists today's NBA games, live ones first.
 func (n *NBA) Games(ctx context.Context) ([]Game, error) {
-	games, origin, err := FetchGames(ctx, n.site())
+	site := n.site()
+	p := findProvider(site)
+	games, origin, err := p.FetchGames(ctx, site)
 	if err != nil {
 		return nil, err
 	}
@@ -170,6 +201,7 @@ func (n *NBA) Games(ctx context.Context) ([]Game, error) {
 	n.mu.Lock()
 	if origin != n.settings.Site {
 		n.settings.Site = origin
+		n.settings.Provider = p.ID()
 		n.save()
 	}
 	n.mu.Unlock()
@@ -213,14 +245,17 @@ func main() {
 	mygo.App.WhenReady(func() {
 		nba.settings = loadSettings()
 		mygo.NewWindow(mygo.WindowOptions{
-			Title:           "NBA",
-			Width:           920,
-			Height:          680,
-			MinWidth:        420,
-			MinHeight:       360,
-			BackgroundColor: "light-dark(#f4f5f7, #0b0d12)", // the page's --bg in src/style.css
-			StateKey:        "main",
-			URL:             "/",
+			Title:                "NBA",
+			Width:                920,
+			Height:               680,
+			MinWidth:             420,
+			MinHeight:            360,
+			BackgroundColor:      "light-dark(#f4f5f7, #0b0d12)", // the page's --bg in src/style.css
+			StateKey:             "main",
+			TitleBarStyle:        mygo.TitleBarHidden,
+			TitleBarHeight:       40,
+			TrafficLightPosition: &mygo.Point{X: 14, Y: 14},
+			URL:                  "/",
 		})
 	})
 	if err := mygo.App.Run(); err != nil {

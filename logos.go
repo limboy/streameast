@@ -27,6 +27,32 @@ func espnLogos(code string) (light, dark string) {
 		"https://a.espncdn.com/i/teamlogos/nba/500-dark/" + code + ".png"
 }
 
+var teamShortNames = map[string]string{
+	"atlanta hawks": "Hawks", "boston celtics": "Celtics", "brooklyn nets": "Nets",
+	"charlotte hornets": "Hornets", "chicago bulls": "Bulls", "cleveland cavaliers": "Cavaliers",
+	"dallas mavericks": "Mavericks", "denver nuggets": "Nuggets", "detroit pistons": "Pistons",
+	"golden state warriors": "Warriors", "houston rockets": "Rockets", "indiana pacers": "Pacers",
+	"la clippers": "Clippers", "los angeles clippers": "Clippers", "los angeles lakers": "Lakers",
+	"la lakers": "Lakers", "memphis grizzlies": "Grizzlies", "miami heat": "Heat",
+	"milwaukee bucks": "Bucks", "minnesota timberwolves": "Timberwolves", "new orleans pelicans": "Pelicans",
+	"new york knicks": "Knicks", "oklahoma city thunder": "Thunder", "orlando magic": "Magic",
+	"philadelphia 76ers": "76ers", "phoenix suns": "Suns", "portland trail blazers": "Trail Blazers",
+	"sacramento kings": "Kings", "san antonio spurs": "Spurs", "toronto raptors": "Raptors",
+	"utah jazz": "Jazz", "washington wizards": "Wizards",
+}
+
+// teamShort returns the team's standard short nickname, e.g. "Warriors".
+func teamShort(name string) string {
+	if s, ok := teamShortNames[strings.ToLower(strings.TrimSpace(name))]; ok {
+		return s
+	}
+	parts := strings.Fields(name)
+	if len(parts) > 0 {
+		return parts[len(parts)-1]
+	}
+	return name
+}
+
 // setLogos gives t ESPN's logos when its name or code is known, and keeps
 // the logo it has otherwise.
 func (t *Team) setLogos(code string) {

@@ -1,5 +1,5 @@
 // NBA is generated from the Go code by `mygo generate`.
-import { NBA, type Game, type ScheduledGame, type Team } from "./mygo";
+import { NBA, type Domain, type Game, type ScheduledGame, type Team } from "./mygo";
 
 const $ = <T extends HTMLElement>(selector: string) => document.querySelector<T>(selector)!;
 
@@ -100,125 +100,226 @@ async function loadSchedule() {
   days.replaceChildren(...groups);
 }
 
-let loading = false;
+const refreshBtn = $<HTMLButtonElement>("#refresh");
+const refreshTooltip = $<HTMLSpanElement>("#refresh-tooltip");
+const sourceSelect = $<HTMLSelectElement>("#source-select");
+
+let lastRefreshed: Date | null = null;
+let loadingRefreshes = 0;
+let gamesLoading = false;
+
+function updateRefreshTooltip() {
+  if (gamesLoading || loadingRefreshes > 0) {
+    refreshTooltip.textContent = "Refreshing…";
+    return;
+  }
+  if (!lastRefreshed) {
+    refreshTooltip.textContent = "Not refreshed yet";
+    return;
+  }
+  const timeStr = lastRefreshed.toLocaleTimeString([], {
+    hour: "numeric",
+    minute: "2-digit",
+    second: "2-digit",
+  });
+  refreshTooltip.textContent = `Updated ${timeStr}`;
+}
+
+function setBusy(busy: boolean) {
+  if (busy) {
+    loadingRefreshes++;
+    refreshBtn.classList.add("busy");
+  } else {
+    loadingRefreshes = Math.max(0, loadingRefreshes - 1);
+    if (loadingRefreshes === 0) {
+      refreshBtn.classList.remove("busy");
+    }
+  }
+  updateRefreshTooltip();
+}
+
 async function refresh() {
-  if (loading) return;
-  loading = true;
-  $("#refresh").classList.add("busy");
+  if (gamesLoading) return;
+  gamesLoading = true;
+  setBusy(true);
   try {
-    // Cards are for games to watch: live ones and today's. The site also
-    // lists tomorrow's, which the schedule below shows instead.
+    // Cards are for games to watch: live ones and today's (excluding finished games).
+    // The site also lists tomorrow's, which the schedule below shows instead.
     const today = dayKey(new Date());
-    const games = (await NBA.games()).filter((g) => g.live || dayKey(new Date(g.start * 1000)) === today);
+    const games = (await NBA.games()).filter(
+      (g) => g.status !== "Final" && (g.live || dayKey(new Date(g.start * 1000)) === today),
+    );
     $("#error").hidden = true;
     const list = $("#games");
     list.replaceChildren(...games.map(card));
-    // With nothing to watch, the schedule moves up under the header.
+    // With nothing to watch, the schedule moves up.
     list.hidden = !games.length;
-    const live = games.filter((g) => g.live).length;
-    $("#subtitle").textContent =
-      `${games.length} game${games.length === 1 ? "" : "s"}` + (live ? ` · ${live} live` : "") +
-      ` · updated ${new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}`;
+    lastRefreshed = new Date();
   } catch (err) {
-    $("#error").textContent = `Couldn't load games: ${err instanceof Error ? err.message : err}. Check the domain.`;
+    $("#error").textContent = `Couldn't load games: ${err instanceof Error ? err.message : err}. Check or switch the source.`;
     $("#error").hidden = false;
-    $("#subtitle").textContent = "";
   } finally {
-    loading = false;
-    $("#refresh").classList.remove("busy");
+    gamesLoading = false;
+    setBusy(false);
   }
 }
 
-$("#refresh").addEventListener("click", refresh);
-document.addEventListener("keydown", (e) => {
-  if (e.metaKey && e.key === "r") {
-    e.preventDefault();
-    refresh();
-  }
-});
-
-const CUSTOM = "custom";
-const select = $<HTMLSelectElement>("#site-select");
-
-function note(text: string, error = false) {
-  const msg = $("#settings-msg");
-  msg.textContent = text;
-  msg.className = error ? "error" : "muted";
+interface SourceItem {
+  site: string;
+  host: string;
+  latency?: number;
 }
 
-function option(value: string, label: string) {
-  const o = el("option", "", label);
-  o.value = value;
-  return o;
+const DEFAULT_SOURCES: SourceItem[] = [
+  { site: "https://streamseaste.cx", host: "streamseaste.cx" },
+  { site: "https://v2.streameast.ga", host: "v2.streameast.ga" },
+  { site: "https://v2.streameast.ch", host: "v2.streameast.ch" },
+  { site: "https://v2.thestreameast.fun", host: "v2.thestreameast.fun" },
+];
+
+let activeSite = "https://streamseaste.cx";
+let currentSources: SourceItem[] = [...DEFAULT_SOURCES];
+
+function sourceLabel(s: SourceItem): string {
+  if (s.latency !== undefined) {
+    return `${s.host} · ${s.latency} ms`;
+  }
+  return s.host;
 }
 
-// Fills the picker with the domains that work now, the current one
-// selected even when it didn't answer.
-async function loadDomains() {
-  const current = (await NBA.settings()).site;
-  select.disabled = true;
-  select.replaceChildren(option(current, `${new URL(current).host} · checking…`));
-  note("Checking which domains work…");
-  const domains = await NBA.domains();
-  const options = domains.map((d) =>
-    option(d.site, `${d.host} · ${d.latency} ms · ${d.games} game${d.games === 1 ? "" : "s"}`),
-  );
-  if (!domains.some((d) => d.site === current)) {
-    options.unshift(option(current, `${new URL(current).host} · not responding`));
+function renderSourceOptions(sources: SourceItem[], currentSite: string) {
+  const existingOptions = Array.from(sourceSelect.options);
+  const sameKeys =
+    existingOptions.length === sources.length &&
+    existingOptions.every((opt, i) => sources[i] && opt.value === sources[i]!.site);
+
+  if (sameKeys) {
+    sources.forEach((s, i) => {
+      const opt = existingOptions[i];
+      if (opt) opt.textContent = sourceLabel(s);
+    });
+  } else {
+    sourceSelect.innerHTML = "";
+    for (const s of sources) {
+      const opt = document.createElement("option");
+      opt.value = s.site;
+      opt.textContent = sourceLabel(s);
+      sourceSelect.appendChild(opt);
+    }
   }
-  select.replaceChildren(...options, option(CUSTOM, "Custom…"));
-  select.value = current;
-  select.disabled = false;
-  $("#custom").hidden = true;
-  note(
-    domains.length
-      ? `${domains.length} working domain${domains.length === 1 ? "" : "s"} found.`
-      : "None of the known domains answered. Enter one that works for you.",
-    !domains.length,
-  );
+
+  for (const opt of Array.from(sourceSelect.options)) {
+    try {
+      if (opt.value === currentSite || new URL(opt.value).host === new URL(currentSite).host) {
+        opt.selected = true;
+        break;
+      }
+    } catch {
+      if (opt.value === currentSite) {
+        opt.selected = true;
+        break;
+      }
+    }
+  }
+}
+
+let testingSources = false;
+async function updateSources() {
+  if (testingSources) return;
+  testingSources = true;
+  setBusy(true);
+  try {
+    const domains = await NBA.domains();
+    if (domains && domains.length) {
+      const merged: SourceItem[] = DEFAULT_SOURCES.map((def) => {
+        const live = domains.find((d) => d.site === def.site || d.host === def.host);
+        if (live) {
+          return {
+            site: live.site,
+            host: live.host,
+            latency: live.latency,
+          };
+        }
+        return def;
+      });
+
+      for (const d of domains) {
+        if (!merged.some((m) => m.site === d.site || m.host === d.host)) {
+          merged.push({
+            site: d.site,
+            host: d.host,
+            latency: d.latency,
+          });
+        }
+      }
+
+      currentSources = merged;
+      renderSourceOptions(currentSources, activeSite);
+    }
+  } catch {
+    // ignore
+  } finally {
+    testingSources = false;
+    setBusy(false);
+  }
 }
 
 async function useSite(site: string) {
-  note("Checking…");
   try {
     const s = await NBA.setSite(site);
-    note(`Using ${new URL(s.site).host}.`);
-    refresh();
+    activeSite = s.site;
+    $("#error").hidden = true;
+    renderSourceOptions(currentSources, activeSite);
+    await refresh();
     return true;
   } catch (err) {
-    note(err instanceof Error ? err.message : String(err), true);
+    $("#error").textContent = `Couldn't connect to ${site}: ${err instanceof Error ? err.message : err}`;
+    $("#error").hidden = false;
     return false;
   }
 }
 
-$("#open-settings").addEventListener("click", () => {
-  const form = $("#settings");
-  form.hidden = !form.hidden;
-  if (!form.hidden) loadDomains();
-});
-
-$("#recheck").addEventListener("click", loadDomains);
-
-let previous = "";
-select.addEventListener("focus", () => (previous = select.value));
-select.addEventListener("change", async () => {
-  if (select.value === CUSTOM) {
-    $("#custom").hidden = false;
-    $<HTMLInputElement>("#site").focus();
-    return;
+sourceSelect.addEventListener("change", async () => {
+  const selected = sourceSelect.value;
+  if (!selected || selected === activeSite) return;
+  const ok = await useSite(selected);
+  if (!ok) {
+    renderSourceOptions(currentSources, activeSite);
   }
-  $("#custom").hidden = true;
-  if (!(await useSite(select.value))) select.value = previous;
-  previous = select.value;
 });
 
-$("#settings").addEventListener("submit", async (e) => {
-  e.preventDefault();
-  if (await useSite($<HTMLInputElement>("#site").value)) loadDomains();
+async function triggerRefresh() {
+  await Promise.allSettled([refresh(), updateSources()]);
+}
+
+refreshBtn.addEventListener("click", () => {
+  triggerRefresh();
 });
+
+refreshBtn.addEventListener("mouseenter", updateRefreshTooltip);
+
+document.addEventListener("keydown", (e) => {
+  if (e.metaKey && e.key === "r") {
+    e.preventDefault();
+    triggerRefresh();
+  }
+});
+
+async function initSources() {
+  try {
+    const settings = await NBA.settings();
+    if (settings && settings.site) {
+      activeSite = settings.site;
+    }
+  } catch {}
+  renderSourceOptions(currentSources, activeSite);
+  updateSources();
+}
 
 refresh();
 loadSchedule();
+initSources();
+
 // Scores and live states change: keep them fresh while the window is open.
 // The schedule is cached for 10 minutes in Go, and rolls over at midnight.
 setInterval(() => {

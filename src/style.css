@@ -33,117 +33,148 @@
 body {
   margin: 0;
   min-height: 100vh;
-  padding: 28px 28px 40px;
+  padding: calc(var(--mygo-titlebar-height, 40px) + 16px) 24px 36px;
   background: var(--bg);
   color: var(--fg);
   -webkit-user-select: none;
   user-select: none;
 }
 
-header {
+.titlebar {
+  --app-region: drag;
+  -webkit-user-select: none;
+  user-select: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: var(--mygo-titlebar-height, 40px);
+  padding-left: var(--mygo-titlebar-inset-left, 76px);
+  padding-right: 14px;
   display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 16px;
-  margin-bottom: 22px;
+  align-items: center;
+  justify-content: flex-end;
+  background: var(--bg);
+  z-index: 1000;
 }
 
-h1 {
-  font-size: 28px;
-  letter-spacing: -0.02em;
-  margin: 0;
+.titlebar-controls {
+  --app-region: no-drag;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.source-select {
+  --app-region: no-drag;
+  height: 28px;
+  max-width: 360px;
+  padding: 0 26px 0 10px;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--fg);
+  background-color: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  outline: none;
+  cursor: pointer;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  overflow: hidden;
+  transition: border-color 0.15s ease, background-color 0.15s ease, box-shadow 0.15s ease;
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath fill='none' stroke='%23888888' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round' d='M1 1l4 4 4-4'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+}
+
+.source-select:hover {
+  background-color: var(--card-hover);
+  border-color: var(--line-hover);
+}
+
+.source-select:focus-visible {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+
+.titlebar-btn {
+  --app-region: no-drag;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  color: var(--muted);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.titlebar-btn:hover {
+  color: var(--fg);
+  background: var(--card-hover);
+  border-color: var(--line-hover);
+}
+
+.titlebar-btn svg {
+  width: 15px;
+  height: 15px;
+  pointer-events: none;
+}
+
+.titlebar-btn.busy svg {
+  animation: spin 0.8s linear infinite;
+}
+
+.refresh-tooltip {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  padding: 5px 9px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--fg);
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(-3px);
+  transition: opacity 0.15s ease, transform 0.15s ease;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  z-index: 1001;
+}
+
+.titlebar-btn:hover .refresh-tooltip:not(:empty) {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 
 .muted {
   color: var(--muted);
 }
 
-header .muted {
-  margin: 4px 0 0;
-  font-size: 13px;
-}
-
-.actions {
-  display: flex;
-  gap: 8px;
-}
-
-button,
-input {
+button {
   font: inherit;
   font-size: 13px;
   color: inherit;
-}
-
-.actions button,
-form button {
-  background: var(--card);
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  padding: 6px 12px;
-  cursor: pointer;
-}
-
-.actions button:hover,
-form button:hover {
-  background: var(--card-hover);
 }
 
 .busy {
   opacity: 0.5;
-}
-
-form {
-  background: var(--card);
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  padding: 14px 16px;
-  margin-bottom: 20px;
-}
-
-form label {
-  font-size: 13px;
-  font-weight: 600;
-}
-
-form .row {
-  display: flex;
-  gap: 8px;
-  margin-top: 8px;
-}
-
-form select {
-  flex: 1;
-  min-width: 0;
-  font: inherit;
-  font-size: 13px;
-  color: inherit;
-  background: var(--bg);
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  padding: 6px 8px;
-}
-
-form input {
-  flex: 1;
-  min-width: 0;
-  background: var(--bg);
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  padding: 7px 10px;
-  -webkit-user-select: text;
-  user-select: text;
-}
-
-form select:focus,
-form input:focus {
-  outline: 2px solid var(--accent);
-  outline-offset: -1px;
-}
-
-form p {
-  margin: 8px 0 0;
-  font-size: 12px;
 }
 
 .error {

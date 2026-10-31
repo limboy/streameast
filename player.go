@@ -37,6 +37,8 @@ func openPlayer(site string, game Game, server int, picked func(server int)) {
 	if err != nil {
 		return
 	}
+	p := findProvider(siteURL.Host)
+	gameURL := p.GameURL(site, game, server)
 	config, _ := json.Marshal(map[string]string{"title": game.Away.Name + " @ " + game.Home.Name, "path": game.Path})
 	win := mygo.NewWindow(mygo.WindowOptions{
 		Title:           game.Title(),
@@ -51,7 +53,7 @@ func openPlayer(site string, game Game, server int, picked func(server int)) {
 		TitleBarStyle:        mygo.TitleBarHidden,
 		TitleBarHeight:       40,
 		TrafficLightPosition: &mygo.Point{X: 14, Y: 14},
-		URL:             strings.TrimRight(site, "/") + game.Path + strconv.Itoa(server),
+		URL:                  gameURL,
 		Page: mygo.PageOptions{
 			UserAgent:     userAgent,
 			PreloadScript: "window.__NBA_PLAYER__=" + string(config) + ";\n" + playerScript,
@@ -72,7 +74,7 @@ func openPlayer(site string, game Game, server int, picked func(server int)) {
 	// Stay on this game's pages; the redirects ads try to the top frame
 	// go nowhere.
 	page.OnWillNavigate(func(e *mygo.NavigateEvent) {
-		if !allowedNavigation(siteURL, game.Path, e.URL) {
+		if !p.AllowedNavigation(siteURL, game.Path, e.URL) {
 			e.PreventDefault()
 		}
 	})
@@ -119,5 +121,5 @@ func allowedNavigation(site *url.URL, gamePath, target string) bool {
 		return true
 	}
 	// A new domain of the site, as its SSO hops between them.
-	return strings.Contains(u.Host, "streameast") && strings.HasPrefix(u.Path, gamePath)
+	return (strings.Contains(u.Host, "streameast") || strings.Contains(u.Host, "streamseaste")) && strings.HasPrefix(u.Path, gamePath)
 }
