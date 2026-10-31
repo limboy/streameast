@@ -30,16 +30,10 @@
   const css = `
     html, body { background: #000 !important; overflow: hidden !important; }
     body * { visibility: hidden !important; }
-    #iframe, #iframe *,
-    #player-container, #player-container *,
-    #player-wrapper, #player-wrapper *,
-    .player-container, .player-container * { visibility: visible !important; }
+    #iframe, #iframe * { visibility: visible !important; }
     :root { --nba-bar: 40px; }
     :root.nba-fullscreen { --nba-bar: 0px; }
-    #iframe,
-    #player-container iframe,
-    #player-wrapper iframe,
-    .player-container iframe {
+    #iframe {
       position: fixed !important; inset: var(--nba-bar) 0 0 0 !important;
       width: 100vw !important; height: calc(100vh - var(--nba-bar)) !important;
       max-width: none !important; max-height: none !important;
@@ -86,40 +80,10 @@
     // The page may have moved its sheet; keep ours last.
     document.head.appendChild(style);
 
-    // Deobfuscate streamseaste player container if present
-    const container = document.getElementById("player-container");
-    if (container && container.dataset && container.dataset.e && !container.querySelector("iframe")) {
-      try {
-        const raw = atob(container.dataset.e);
-        let src = "";
-        for (let i = 0; i < raw.length; i++) {
-          src += String.fromCharCode(raw.charCodeAt(i) ^ 0x4f);
-        }
-        src = src.trim();
-        if (/^(https?:)?\/\//.test(src)) {
-          const frame = document.createElement("iframe");
-          frame.src = src;
-          frame.setAttribute("width", "100%");
-          frame.setAttribute("height", "100%");
-          frame.setAttribute("frameborder", "0");
-          frame.setAttribute("scrolling", "no");
-          frame.setAttribute("allowfullscreen", "true");
-          frame.setAttribute("referrerpolicy", "no-referrer");
-          frame.setAttribute("allow", "autoplay;encrypted-media;picture-in-picture;fullscreen");
-          container.replaceChildren(frame);
-        }
-      } catch (e) {
-        console.error("deobfuscate error", e);
-      }
-    }
-
     // The free servers, from StreamEast's list.
     const seServers = [...document.querySelectorAll(".se-stream:not(.is-pro):not(.se-stream--share) a.se-stream__link")]
       .map((a) => ({ name: a.textContent.trim(), href: a.getAttribute("href") }))
       .filter((s) => s.href && s.href.startsWith(cfg.path));
-
-    // Stream buttons from Streamseaste
-    const streamBtns = [...document.querySelectorAll(".stream-btn")];
 
     // The title bar, above the video: the game, then the servers by number
     // and reload on the right.
@@ -137,25 +101,6 @@
       if (new URL(s.href, location.href).pathname.replace(/\/$/, "") === location.pathname.replace(/\/$/, "")) b.className = "on";
       b.onclick = () => location.assign(s.href);
       bar.append(b);
-    }
-
-    if (streamBtns.length > 0) {
-      for (let i = 0; i < streamBtns.length; i++) {
-        const origBtn = streamBtns[i];
-        const b = document.createElement("button");
-        b.textContent = origBtn.textContent.trim().replace(/^Stream\s*/i, "") || String(i + 1);
-        b.title = origBtn.textContent.trim() || `Stream ${i + 1}`;
-        if (origBtn.classList.contains("active") || (i === 0 && !streamBtns.some((btn) => btn.classList.contains("active")))) {
-          b.className = "on";
-        }
-        b.onclick = () => {
-          bar.querySelectorAll(".stream-switch-btn").forEach((btn) => btn.classList.remove("on"));
-          b.classList.add("on");
-          origBtn.click();
-        };
-        b.classList.add("stream-switch-btn");
-        bar.append(b);
-      }
     }
 
     const sep = document.createElement("span");
@@ -179,8 +124,7 @@
     new MutationObserver(fit).observe(document.documentElement, { attributes: true, attributeFilter: ["style"] });
     fit();
 
-    const checkStream = () =>
-      document.querySelector("#iframe, #player-container iframe, #player-wrapper iframe, .player-container iframe");
+    const checkStream = () => document.querySelector("#iframe");
 
     if (!checkStream()) {
       const msg = document.createElement("div");

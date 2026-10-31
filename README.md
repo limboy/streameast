@@ -6,8 +6,8 @@ A lightweight, distraction-free desktop application for streaming NBA games, vie
 
 ## Features
 
-- **Multi-Source Streaming**:
-  - Built-in provider support for **Streamseaste** (`streamseaste.cx`) and **StreamEast** mirrors (`v2.streameast.ga`, `v2.streameast.ch`, `v2.thestreameast.fun`).
+- **Multi-Mirror Streaming**:
+  - Built-in provider support for **StreamEast** mirrors (`v2.streameast.ga`, `v2.streameast.ch`, `v2.thestreameast.fun`).
   - Switch streaming domains instantly via the dropdown in the window title bar.
   - Automatic source speed testing with real-time latency measurements.
 
@@ -103,11 +103,10 @@ go test -v ./...
 
 ```
 ├── main.go               # App entrypoint, window initialization, and settings management
-├── provider.go           # Multi-provider abstraction (StreamEast & Streamseaste)
-├── streamseaste.go       # Streamseaste scraper & livescore parser
+├── provider.go           # Streaming provider abstraction
 ├── streameast.go         # StreamEast scraper & game parser
 ├── player.go             # Player window controller & navigation restrictions
-├── player.js             # Player page script (stream deobfuscation, server switcher)
+├── player.js             # Player page script (clean video view, server switcher)
 ├── logos.go              # Team naming and ESPN logo resolution
 ├── schedule.go           # ESPN 3-day schedule fetcher
 ├── index.html            # Main game list HTML layout

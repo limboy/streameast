@@ -171,13 +171,12 @@ interface SourceItem {
 }
 
 const DEFAULT_SOURCES: SourceItem[] = [
-  { site: "https://streamseaste.cx", host: "streamseaste.cx" },
   { site: "https://v2.streameast.ga", host: "v2.streameast.ga" },
   { site: "https://v2.streameast.ch", host: "v2.streameast.ch" },
   { site: "https://v2.thestreameast.fun", host: "v2.thestreameast.fun" },
 ];
 
-let activeSite = "https://streamseaste.cx";
+let activeSite = "https://v2.streameast.ga";
 let currentSources: SourceItem[] = [...DEFAULT_SOURCES];
 
 function sourceLabel(s: SourceItem): string {
@@ -308,7 +307,7 @@ document.addEventListener("keydown", (e) => {
 async function initSources() {
   try {
     const settings = await NBA.settings();
-    if (settings && settings.site) {
+    if (settings && settings.site && !settings.site.includes("streamseaste")) {
       activeSite = settings.site;
     }
   } catch {}

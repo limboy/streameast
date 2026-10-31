@@ -121,5 +121,5 @@ func allowedNavigation(site *url.URL, gamePath, target string) bool {
 		return true
 	}
 	// A new domain of the site, as its SSO hops between them.
-	return (strings.Contains(u.Host, "streameast") || strings.Contains(u.Host, "streamseaste")) && strings.HasPrefix(u.Path, gamePath)
+	return strings.Contains(u.Host, "streameast") && strings.HasPrefix(u.Path, gamePath)
 }

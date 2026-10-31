@@ -19,13 +19,13 @@ import (
 
 // defaultSite is where the app looks for streams until the user picks
 // another domain; the site moves between domains often.
-const defaultSite = "https://streamseaste.cx"
+const defaultSite = "https://v2.streameast.ga"
 
 // Settings are the user's choices, kept in settings.json in the user data
 // directory.
 type Settings struct {
-	Site     string `json:"site"`               // an origin, "https://streamseaste.cx" or "https://v2.streameast.ga"
-	Provider string `json:"provider,omitempty"` // provider ID: "streameast", "streamseaste"
+	Site     string `json:"site"`               // an origin, e.g. "https://v2.streameast.ga"
+	Provider string `json:"provider,omitempty"` // provider ID: "streameast"
 	Server   int    `json:"server,omitempty"`   // the server last watched, 1 when 0
 }
 
@@ -48,7 +48,7 @@ func loadSettings() Settings {
 	if data, err := os.ReadFile(settingsPath()); err == nil {
 		json.Unmarshal(data, &s)
 	}
-	if s.Site == "" {
+	if s.Site == "" || strings.Contains(s.Site, "streamseaste") {
 		s.Site = defaultSite
 	}
 	return s
@@ -125,9 +125,9 @@ func (n *NBA) SetSite(ctx context.Context, site string) (Settings, error) {
 
 // Domain is a site that answered with NBA games.
 type Domain struct {
-	Site     string `json:"site"`     // the origin it ended at, "https://streamseaste.cx"
-	Host     string `json:"host"`     // "streamseaste.cx"
-	Provider string `json:"provider"` // "Streamseaste" or "StreamEast"
+	Site     string `json:"site"`     // the origin it ended at, e.g. "https://v2.streameast.ga"
+	Host     string `json:"host"`     // "v2.streameast.ga"
+	Provider string `json:"provider"` // "StreamEast"
 	Latency  int    `json:"latency"`  // how long the NBA page took, in milliseconds
 	Games    int    `json:"games"`
 }

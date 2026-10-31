@@ -37,7 +37,7 @@ func (p *StreamEastProvider) KnownSites() []string {
 }
 func (p *StreamEastProvider) Matches(host string) bool {
 	host = strings.ToLower(host)
-	if strings.Contains(host, "streameast") && !strings.Contains(host, "streamseaste") {
+	if strings.Contains(host, "streameast") {
 		return true
 	}
 	for _, s := range p.KnownSites() {
@@ -57,47 +57,7 @@ func (p *StreamEastProvider) AllowedNavigation(site *url.URL, gamePath, target s
 	return allowedNavigation(site, gamePath, target)
 }
 
-// StreamseasteProvider handles streamseaste.cx and its mirrors.
-type StreamseasteProvider struct{}
-
-func (p *StreamseasteProvider) ID() string   { return "streamseaste" }
-func (p *StreamseasteProvider) Name() string { return "Streamseaste" }
-func (p *StreamseasteProvider) DefaultSite() string {
-	return "https://streamseaste.cx"
-}
-func (p *StreamseasteProvider) KnownSites() []string {
-	return []string{
-		"streamseaste.cx",
-	}
-}
-func (p *StreamseasteProvider) Matches(host string) bool {
-	host = strings.ToLower(host)
-	return strings.Contains(host, "streamseaste")
-}
-func (p *StreamseasteProvider) FetchGames(ctx context.Context, base string) ([]Game, string, error) {
-	return fetchStreamseasteGames(ctx, base)
-}
-func (p *StreamseasteProvider) GameURL(site string, game Game, server int) string {
-	return strings.TrimRight(site, "/") + game.Path
-}
-func (p *StreamseasteProvider) AllowedNavigation(site *url.URL, gamePath, target string) bool {
-	u, err := url.Parse(target)
-	if err != nil {
-		return false
-	}
-	switch {
-	case u.Scheme == "about":
-		return true
-	case u.Scheme != "https" && u.Scheme != "http":
-		return false
-	case u.Host == site.Host:
-		return strings.HasPrefix(u.Path, gamePath)
-	}
-	return false
-}
-
 var providers = []Provider{
-	&StreamseasteProvider{},
 	&StreamEastProvider{},
 }
 
