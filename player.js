@@ -1,10 +1,51 @@
-// Runs in the game's page before its own scripts (PageOptions.PreloadScript).
-// window.__NBA_PLAYER__ = { title, path } comes from player.go.
+// Runs in the game's page before its own scripts (PageOptions.PreloadScript),
+// and, since it clears the ads of the frames the player comes in, in every
+// iframe too (PageOptions.PreloadAllFrames). window.__NBA_PLAYER__ =
+// { title, path } comes from player.go, into the top frame alone.
 (() => {
   const cfg = window.__NBA_PLAYER__ || {};
 
   // Popups, pop-unders and new tabs are ads.
   window.open = () => null;
+
+  if (window !== window.top) {
+    // The player is an iframe two origins deep (/iframe → wikisport →
+    // the player's own host), and the ads there lay a transparent div over
+    // the whole frame, at the top z-index, which eats the click that starts
+    // playback: each click on the video goes to it instead, and with popups
+    // blocked nothing ever comes of it. Nothing else here is ours in a
+    // frame: the frame's scripts include the player's own, so they stay.
+    const playerSide = (el) =>
+      el.tagName === "VIDEO" ||
+      (el.closest && el.closest("#jwplayer, .jwplayer, #player-container, #unmuteBtn, video"));
+    const clear = (el) => {
+      // The layer is an empty div: the check is cheap on everything else,
+      // which matters in the chat frame, with thousands of nodes.
+      if (!(el instanceof HTMLElement) || el.childElementCount || el.textContent.trim()) return;
+      if (playerSide(el)) return;
+      const s = getComputedStyle(el);
+      if (s.position !== "fixed" || s.display === "none" || s.visibility === "hidden") return;
+      if (+s.zIndex < 1e5) return;
+      if (!/^(transparent|rgba\(0, 0, 0, 0\))$/.test(s.backgroundColor)) return;
+      const b = el.getBoundingClientRect();
+      if (b.width < innerWidth * 0.95 || b.height < innerHeight * 0.95) return;
+      // Not removed: the ad script would put another one back, and takes
+      // the player's own cleanup with it. Clicks go through it instead.
+      el.style.setProperty("pointer-events", "none", "important");
+    };
+    const sweep = () => {
+      if (document.body) for (const el of document.body.getElementsByTagName("*")) clear(el);
+    };
+    // The layers come with the ads, and are styled after they are inserted:
+    // look at what arrives, and again as the page settles.
+    new MutationObserver((records) => {
+      for (const r of records) {
+        for (const n of r.addedNodes) if (n.nodeType === 1) clear(n);
+      }
+    }).observe(document.documentElement, { childList: true, subtree: true });
+    for (const t of [0, 500, 1000, 2000, 4000, 8000, 15000]) setTimeout(sweep, t);
+    return;
+  }
 
   // Third-party scripts are ads and trackers: neuter them before they run,
   // as the parser inserts them. The site's own scripts stay.

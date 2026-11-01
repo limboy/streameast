@@ -1,9 +1,9 @@
 module streameast
 
-go 1.27.1
+go 1.27.3
 
 require (
-	github.com/egoist/mygo v0.5.5
+	github.com/egoist/mygo v0.7.3
 	golang.org/x/net v0.61.0
 )
 

@@ -55,8 +55,13 @@ func openPlayer(site string, game Game, server int, picked func(server int)) {
 		TrafficLightPosition: &mygo.Point{X: 14, Y: 14},
 		URL:                  gameURL,
 		Page: mygo.PageOptions{
-			UserAgent:     userAgent,
-			PreloadScript: "window.__NBA_PLAYER__=" + string(config) + ";\n" + playerScript,
+			UserAgent: userAgent,
+			// The site's player is an iframe two origins deep, and the ads
+			// there lay a transparent full-frame div over the video that
+			// eats the click starting it: the script runs in those frames
+			// too, where it only clears that layer.
+			PreloadScript:    "window.__NBA_PLAYER__=" + string(config) + ";\n" + playerScript,
+			PreloadAllFrames: true,
 		},
 	})
 	players.byPath[game.Path] = win
