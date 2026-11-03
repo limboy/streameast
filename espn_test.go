@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"testing"
 	"time"
 )
@@ -58,13 +59,82 @@ func TestMatchEvent(t *testing.T) {
 	if e, ok := matchEvent(events, byID); !ok || e.ID != "401" {
 		t.Fatalf("matchEvent by ID = %q, %v; want the event", e.ID, ok)
 	}
-	// The home and away teams must be on the right sides.
+	// Mirrors may list the teams in the opposite home/away order.
 	swapped := Game{
 		Home: Team{Name: "Oklahoma City Thunder", Short: "Thunder"},
 		Away: Team{Name: "Cleveland Cavaliers", Short: "Cavaliers"},
 	}
-	if e, ok := matchEvent(events, swapped); ok {
-		t.Errorf("matchEvent matched swapped teams to %q", e.ID)
+	if e, ok := matchEvent(events, swapped); !ok || e.ID != "401" {
+		t.Errorf("matchEvent with swapped teams = %q, %v; want the event", e.ID, ok)
+	}
+	unrelated := Game{Home: game.Home, Away: Team{Name: "Chicago Bulls", Short: "Bulls"}}
+	if e, ok := matchEvent(events, unrelated); ok {
+		t.Errorf("matchEvent matched different opponents to %q", e.ID)
+	}
+}
+
+func TestMergeEventsReversedTeams(t *testing.T) {
+	bulls := Team{Name: "Chicago Bulls", Short: "Bulls", Score: "101"}
+	bulls.setLogos("")
+	sixers := Team{Name: "Philadelphia 76ers", Short: "76ers", Score: "116"}
+	sixers.setLogos("")
+	site := Game{
+		ID: "site-game", Path: "/nba/chicago-bulls-vs-philadelphia-76ers/",
+		Home: bulls, Away: sixers,
+		Start: 100, Live: true, Status: "4th",
+	}
+	for _, state := range []string{"pre", "in", "post"} {
+		for _, id := range []string{"", "401"} {
+			for _, homeFirst := range []bool{true, false} {
+				t.Run(fmt.Sprintf("%s/id=%s/homeFirst=%t", state, id, homeFirst), func(t *testing.T) {
+					e := finalEvent("401")
+					c := &e.Competitions[0]
+					c.Status.Type.State = state
+					c.Status.Type.Completed = state == "post"
+					c.Status.Type.Detail = "3:39 - 4th Quarter"
+					if state == "pre" {
+						c.Status.Type.Detail = "7:00 PM ET"
+					} else if state == "post" {
+						c.Status.Type.Detail = "Final"
+					}
+					c.Competitors = []espnCompetitor{
+						{HomeAway: "home", Score: "116", Team: espnTeam{Abbreviation: "PHI", DisplayName: sixers.Name, ShortDisplayName: sixers.Short, Color: "006bb6"}},
+						{HomeAway: "away", Score: "101", Team: espnTeam{Abbreviation: "CHI", DisplayName: bulls.Name, ShortDisplayName: bulls.Short, Color: "ce1141"}},
+					}
+					if !homeFirst {
+						c.Competitors[0], c.Competitors[1] = c.Competitors[1], c.Competitors[0]
+					}
+					g := site
+					g.ESPNID = id
+					if state == "pre" {
+						g.Home.Score, g.Away.Score = "", ""
+					}
+					games := mergeEvents([]espnEvent{e}, []Game{g})
+					if len(games) != 1 {
+						t.Fatalf("got %d games, want the site's one", len(games))
+					}
+					g = games[0]
+					wantHome, wantAway := sixers, bulls
+					if state == "pre" {
+						wantHome.Score, wantAway.Score = "", ""
+					} else {
+						wantHome.Color, wantAway.Color = "#006bb6", "#ce1141"
+					}
+					if g.Home != wantHome || g.Away != wantAway {
+						t.Errorf("merged teams = home:%+v away:%+v; want home:%+v away:%+v", g.Home, g.Away, wantHome, wantAway)
+					}
+					if g.ID != site.ID || g.Path != site.Path || g.Start != site.Start || g.ESPNID != e.ID {
+						t.Errorf("stream identity changed: %+v", g)
+					}
+					if g.Title() != "Bulls @ 76ers" {
+						t.Errorf("title = %q, want Bulls @ 76ers", g.Title())
+					}
+					if g.Live != (state == "in") || g.Final != (state == "post") || g.Status != c.Status.Type.Detail {
+						t.Errorf("merged state = live:%v final:%v status:%q", g.Live, g.Final, g.Status)
+					}
+				})
+			}
+		}
 	}
 }
 

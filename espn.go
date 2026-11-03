@@ -289,7 +289,8 @@ func matchEvent(events []espnEvent, game Game) (espnEvent, bool) {
 				away = x
 			}
 		}
-		if sameTeam(game.Home, home) && sameTeam(game.Away, away) {
+		if (sameTeam(game.Home, home) && sameTeam(game.Away, away)) ||
+			(sameTeam(game.Home, away) && sameTeam(game.Away, home)) {
 			return e, true
 		}
 	}
@@ -313,6 +314,16 @@ func applyEvent(game *Game, e espnEvent) {
 	if game.ESPNID == "" {
 		game.ESPNID = e.ID
 	}
+	c, _ := e.comp()
+	// The site's home/away labels can be reversed. Align whole teams with
+	// ESPN before assigning scores and colors, so they stay with the team.
+	for _, x := range c.Competitors {
+		if (x.HomeAway == "home" && sameTeam(game.Away, x)) ||
+			(x.HomeAway == "away" && sameTeam(game.Home, x)) {
+			game.Home, game.Away = game.Away, game.Home
+			break
+		}
+	}
 	s := e.status()
 	game.Live = s.Type.State == "in"
 	game.Final = s.isFinal()
@@ -327,7 +338,6 @@ func applyEvent(game *Game, e espnEvent) {
 		game.Status = s.Type.Detail
 	}
 	if game.Final || game.Live {
-		c, _ := e.comp()
 		for _, x := range c.Competitors {
 			t := &game.Away
 			if x.HomeAway == "home" {

@@ -126,6 +126,18 @@
       .map((a) => ({ name: a.textContent.trim(), href: a.getAttribute("href") }))
       .filter((s) => s.href && s.href.startsWith(cfg.path));
 
+    // A different game may not offer the server remembered from the last
+    // one. Fall back once to server 1, including on an empty error page.
+    const pagePath = (href) => new URL(href, location.href).pathname.replace(/\/$/, "");
+    const currentPath = pagePath(location.href);
+    const currentServer = cfg.path && location.pathname.startsWith(cfg.path)
+      ? Number(location.pathname.slice(cfg.path.length).replace(/\/$/, ""))
+      : 0;
+    if (currentServer > 1 && !seServers.some((s) => pagePath(s.href) === currentPath)) {
+      location.replace(cfg.path + "1");
+      return;
+    }
+
     // The title bar, above the video: the game, then the servers by number
     // and reload on the right.
     const bar = document.createElement("div");
@@ -139,7 +151,7 @@
       const b = document.createElement("button");
       b.textContent = s.name.replace(/^Server\s*/i, "");
       b.title = s.name;
-      if (new URL(s.href, location.href).pathname.replace(/\/$/, "") === location.pathname.replace(/\/$/, "")) b.className = "on";
+      if (pagePath(s.href) === currentPath) b.className = "on";
       b.onclick = () => location.assign(s.href);
       bar.append(b);
     }
