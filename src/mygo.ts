@@ -4,6 +4,18 @@ import { call } from "mygo-runtime";
 
 // ---- Types ----
 
+/** DetailStat is one row of the teams' side-by-side stats. */
+export interface DetailStat {
+  /** "FG" */
+  label: string;
+  /** "40-86 (47%)" */
+  home: string;
+  away: string;
+  /** for the comparison bar */
+  homeValue: number;
+  awayValue: number;
+}
+
 /** Domain is a site that answered with NBA games. */
 export interface Domain {
   /** the origin it ended at, e.g. "https://v2.streameast.ga" */
@@ -20,6 +32,8 @@ export interface Domain {
 /** Game is an NBA game listed by the site. */
 export interface Game {
   id: string;
+  /** ESPN's event ID, for the game's details, or "" */
+  espnId: string;
   /** the game's page, "/nba/…/" */
   path: string;
   home: Team;
@@ -28,8 +42,50 @@ export interface Game {
   start: number;
   /** being played now */
   live: boolean;
-  /** the period of a live game, "4th", "Halftime", or "" */
+  /** the game ended */
+  final: boolean;
+  /** the period of a live game, "4th", "Halftime", or "Final" */
   status: string;
+}
+
+/**
+ * GameDetail is how a game ended: its line score, team stats and top
+ * performers, as ESPN has them.
+ */
+export interface GameDetail {
+  id: string;
+  /** Unix seconds */
+  start: number;
+  /** "Final", "Final/OT" */
+  status: string;
+  home: Team;
+  away: Team;
+  /** the score of each period */
+  homeLine: string[];
+  awayLine: string[];
+  /** "1", "2", "3", "4", "OT" */
+  periods: string[];
+  /** "3-4" */
+  homeRecord: string;
+  awayRecord: string;
+  homeWon: boolean;
+  awayWon: boolean;
+  venue: string;
+  stats: DetailStat[];
+  homeLeaders: Leader[];
+  awayLeaders: Leader[];
+}
+
+/** Leader is a team's best player in one category. */
+export interface Leader {
+  /** "Points" */
+  category: string;
+  name: string;
+  headshot: string;
+  /** "27" */
+  value: string;
+  /** "9/12 FG, 2/2 FT" */
+  detail: string;
 }
 
 /** ScheduledGame is an upcoming game from ESPN's schedule. */
@@ -64,10 +120,11 @@ export interface Team {
   short: string;
   /** an absolute URL, or "" */
   logo: string;
-  /** the logo for dark backgrounds */
   logoDark: string;
   /** "" before the game */
   score: string;
+  /** the team's primary color, "#008ca8", or "" */
+  color: string;
 }
 
 // ---- Services ----
@@ -75,13 +132,23 @@ export interface Team {
 /** NBA is the service the game list calls. */
 export const NBA = {
   /**
+   * Detail returns ESPN's account of a game: its line score, team stats and
+   * top performers.
+   */
+  detail(game: Game): Promise<GameDetail> {
+    return call("NBA.Detail", game);
+  },
+  /**
    * Domains checks the known domains, and the current one, at once, and lists
    * those that work, fastest first.
    */
   domains(): Promise<Domain[]> {
     return call("NBA.Domains");
   },
-  /** Games lists today's NBA games, live ones first. */
+  /**
+   * Games lists today's NBA games — live, still to come, and finished — from
+   * the site and ESPN, live ones first.
+   */
   games(): Promise<Game[]> {
     return call("NBA.Games");
   },

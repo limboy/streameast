@@ -28,22 +28,25 @@ var client = func() *http.Client {
 
 // Team is one side of a game.
 type Team struct {
-	Name  string `json:"name"`  // "Philadelphia 76ers"
-	Short string `json:"short"` // "76ers"
-	Logo     string `json:"logo"`     // an absolute URL, or ""
-	LogoDark string `json:"logoDark"` // the logo for dark backgrounds
-	Score    string `json:"score"`    // "" before the game
+	Name     string `json:"name"`  // "Philadelphia 76ers"
+	Short    string `json:"short"` // "76ers"
+	Logo     string `json:"logo"`  // an absolute URL, or ""
+	LogoDark string `json:"logoDark"`
+	Score    string `json:"score"` // "" before the game
+	Color    string `json:"color"` // the team's primary color, "#008ca8", or ""
 }
 
 // Game is an NBA game listed by the site.
 type Game struct {
 	ID     string `json:"id"`
-	Path   string `json:"path"` // the game's page, "/nba/…/"
+	ESPNID string `json:"espnId"` // ESPN's event ID, for the game's details, or ""
+	Path   string `json:"path"`   // the game's page, "/nba/…/"
 	Home   Team   `json:"home"`
 	Away   Team   `json:"away"`
 	Start  int64  `json:"start"`  // Unix seconds
 	Live   bool   `json:"live"`   // being played now
-	Status string `json:"status"` // the period of a live game, "4th", "Halftime", or ""
+	Final  bool   `json:"final"`  // the game ended
+	Status string `json:"status"` // the period of a live game, "4th", "Halftime", or "Final"
 }
 
 // Title is how windows name the game.
@@ -101,7 +104,12 @@ func parseGames(doc *html.Node, final *url.URL) []Game {
 			continue
 		}
 		seen[path] = true
-		g := Game{ID: attr(card, "data-match-id"), Path: path, Live: hasClass(card, "m-card--live")}
+		g := Game{
+			ID:     attr(card, "data-match-id"),
+			ESPNID: attr(card, "data-espn-event-id"),
+			Path:   path,
+			Live:   hasClass(card, "m-card--live"),
+		}
 		g.Start, _ = strconv.ParseInt(attr(card, "data-time"), 10, 64)
 		names := strings.SplitN(attr(card, "data-team-names"), "|", 2)
 		for i, side := range []*Team{&g.Home, &g.Away} {
@@ -119,6 +127,7 @@ func parseGames(doc *html.Node, final *url.URL) []Game {
 			side.setLogos("")
 		}
 		g.Status = text(first(card, func(n *html.Node) bool { return hasClass(n, "m-card__pill-status") }))
+		g.Final = hasClass(card, "m-card--final") || strings.HasPrefix(strings.ToLower(g.Status), "final")
 		games = append(games, g)
 	}
 	// Live games first, then by start time.

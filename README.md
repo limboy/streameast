@@ -13,7 +13,9 @@ A lightweight, distraction-free desktop application for streaming NBA games, vie
 
 - **Live Games & Real-Time Scores**:
   - Instant game status display (quarters, halftime, overtime, live scores).
-  - Automatically filters out completed games to focus on active and upcoming games for today.
+  - Today's finished games stay in the list, marked **FINAL**, with the final score.
+  - Click a finished game for ESPN-style details: quarter-by-quarter line score, team stats, and top performers.
+  - Automatically filters out other days' completed games to focus on today's games.
   - High-resolution team logos with automatic light and dark mode adaptation.
 
 - **Clean, Ad-Free Video Player**:
@@ -105,6 +107,8 @@ go test -v ./...
 ├── main.go               # App entrypoint, window initialization, and settings management
 ├── provider.go           # Streaming provider abstraction
 ├── streameast.go         # StreamEast scraper & game parser
+├── espn.go               # ESPN scoreboards: live state and finished games
+├── detail.go             # ESPN game details: line score, stats, leaders
 ├── player.go             # Player window controller & navigation restrictions
 ├── player.js             # Player page script (clean video view, server switcher)
 ├── logos.go              # Team naming and ESPN logo resolution

@@ -25,8 +25,9 @@ func TestParseGames(t *testing.T) {
 	}
 	g := games[0]
 	want := Game{
-		ID:   "47191",
-		Path: "/nba/philadelphia-76ers-vs-new-york-knicks-4/",
+		ID:     "47191",
+		ESPNID: "401909089",
+		Path:   "/nba/philadelphia-76ers-vs-new-york-knicks-4/",
 		Home: Team{
 			Name: "Philadelphia 76ers", Short: "76ers", Score: "88",
 			Logo:     "https://a.espncdn.com/i/teamlogos/nba/500/phi.png",

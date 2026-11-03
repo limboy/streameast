@@ -28,6 +28,13 @@
       <div id="days"><p class="muted">Loading the schedule…</p></div>
     </section>
 
+    <dialog id="detail" class="detail-overlay" aria-label="Game details">
+      <div class="detail">
+        <button id="detail-close" class="detail-close" aria-label="Close" autofocus>×</button>
+        <div id="detail-body"></div>
+      </div>
+    </dialog>
+
     <script type="module" src="./src/main.ts"></script>
   </body>
 </html>

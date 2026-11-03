@@ -189,7 +189,8 @@ func (n *NBA) Domains(ctx context.Context) []Domain {
 	return domains
 }
 
-// Games lists today's NBA games, live ones first.
+// Games lists today's NBA games — live, still to come, and finished — from
+// the site and ESPN, live ones first.
 func (n *NBA) Games(ctx context.Context) ([]Game, error) {
 	site := n.site()
 	p := findProvider(site)
@@ -205,6 +206,9 @@ func (n *NBA) Games(ctx context.Context) ([]Game, error) {
 		n.save()
 	}
 	n.mu.Unlock()
+	// The site drops a game when it ends; ESPN still has it, finished, with
+	// its final score.
+	games = mergeToday(ctx, games)
 	if games == nil {
 		games = []Game{}
 	}
