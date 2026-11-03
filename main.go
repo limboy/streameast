@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"runtime"
 	"slices"
 	"strings"
 	"sync"
@@ -242,25 +243,72 @@ func (n *NBA) setServer(server int) {
 	}
 }
 
+// mainWindow is the game list's window, nil until it opens. Only the main
+// thread touches it: WhenReady, menu clicks and Dock clicks run there.
+var mainWindow *mygo.Window
+
+// showMainWindow brings the game list forward, opening it again when the
+// user closed it.
+func showMainWindow() {
+	if mainWindow != nil && !mainWindow.IsDestroyed() {
+		mainWindow.Show()
+		mainWindow.Focus()
+		return
+	}
+	mainWindow = mygo.NewWindow(mygo.WindowOptions{
+		Title:                "NBA",
+		Width:                920,
+		Height:               680,
+		MinWidth:             420,
+		MinHeight:            360,
+		BackgroundColor:      "light-dark(#f4f5f7, #0b0d12)", // the page's --bg in src/style.css
+		StateKey:             "main",
+		TitleBarStyle:        mygo.TitleBarHidden,
+		TitleBarHeight:       40,
+		TrafficLightPosition: &mygo.Point{X: 14, Y: 14},
+		URL:                  "/",
+	})
+}
+
+// appMenu is MyGo's default menu bar with Show Main Window in the File
+// menu, to get the game list back once its window is closed.
+func appMenu() *mygo.Menu {
+	return mygo.NewMenu([]*mygo.MenuItem{
+		{Role: mygo.RoleAppMenu},
+		{Label: "File", Submenu: []*mygo.MenuItem{
+			{
+				Label:       "Show Main Window",
+				Accelerator: "CmdOrCtrl+1",
+				Click:       func(*mygo.MenuItem, *mygo.Window) { showMainWindow() },
+			},
+			mygo.Separator(),
+			{Role: mygo.RoleClose},
+		}},
+		{Role: mygo.RoleEditMenu},
+		{Role: mygo.RoleViewMenu},
+		{Role: mygo.RoleWindowMenu},
+	})
+}
+
 func main() {
 	nba := &NBA{}
 	mygo.Bind(nba)
+	mygo.App.SetMenu(appMenu())
+	if runtime.GOOS == "darwin" {
+		// Stay in the Dock once the last window closes, as Mac apps do;
+		// a listener keeps the app running. Elsewhere it quits.
+		mygo.App.OnWindowAllClosed(func() {})
+	}
+	// Clicking the Dock icon with no window showing opens the game list.
+	mygo.App.OnActivate(func(hasVisibleWindows bool) {
+		if !hasVisibleWindows {
+			showMainWindow()
+		}
+	})
 
 	mygo.App.WhenReady(func() {
 		nba.settings = loadSettings()
-		mygo.NewWindow(mygo.WindowOptions{
-			Title:                "NBA",
-			Width:                920,
-			Height:               680,
-			MinWidth:             420,
-			MinHeight:            360,
-			BackgroundColor:      "light-dark(#f4f5f7, #0b0d12)", // the page's --bg in src/style.css
-			StateKey:             "main",
-			TitleBarStyle:        mygo.TitleBarHidden,
-			TitleBarHeight:       40,
-			TrafficLightPosition: &mygo.Point{X: 14, Y: 14},
-			URL:                  "/",
-		})
+		showMainWindow()
 	})
 	if err := mygo.App.Run(); err != nil {
 		log.Fatal(err)
