@@ -1,7 +1,7 @@
 // Runs in the game's page before its own scripts (PageOptions.PreloadScript),
 // and, since it clears the ads of the frames the player comes in, in every
 // iframe too (PageOptions.PreloadAllFrames). window.__NBA_PLAYER__ =
-// { title, path } comes from player.go, into the top frame alone.
+// { title, path, live } comes from player.go, into the top frame alone.
 (() => {
   const cfg = window.__NBA_PLAYER__ || {};
 
@@ -47,11 +47,15 @@
     return;
   }
 
-  // Third-party scripts are ads and trackers: neuter them before they run,
-  // as the parser inserts them. The site's own scripts stay.
+  // Inline HLS players load Clappr and its plugins from jsDelivr. Keep
+  // those dependencies as well as the site's scripts; block other hosts.
   const blocked = (src) => {
     try {
-      return new URL(src, location.href).host !== location.host;
+      const url = new URL(src, location.href);
+      if (url.host === location.host) return false;
+      const library = url.pathname.match(/^\/npm\/(clappr|level-selector|clappr-chromecast-plugin)@[^/]+\/dist\/([^/]+)$/);
+      return !(url.protocol === "https:" && url.hostname === "cdn.jsdelivr.net" &&
+        library && library[2] === library[1] + ".min.js");
     } catch {
       return false;
     }
@@ -71,14 +75,15 @@
   const css = `
     html, body { background: #000 !important; overflow: hidden !important; }
     body * { visibility: hidden !important; }
-    #iframe, #iframe * { visibility: visible !important; }
+    #iframe, #iframe *, #VideoFrame, #VideoFrame * { visibility: visible !important; }
     :root { --nba-bar: 40px; }
     :root.nba-fullscreen { --nba-bar: 0px; }
-    #iframe {
+    html #iframe, html #VideoFrame {
       position: fixed !important; inset: var(--nba-bar) 0 0 0 !important;
       width: 100vw !important; height: calc(100vh - var(--nba-bar)) !important;
       max-width: none !important; max-height: none !important;
-      margin: 0 !important; border: 0 !important; z-index: 2147483000 !important;
+      margin: 0 !important; padding: 0 !important; border: 0 !important;
+      background: #000 !important; z-index: 2147483000 !important;
     }
     #nba-bar, #nba-bar *, #nba-msg, #nba-msg * { visibility: visible !important; }
     #nba-bar {
@@ -109,7 +114,7 @@
     #nba-bar svg { width: 14px; height: 14px; }
     #nba-msg {
       position: fixed; inset: var(--nba-bar) 0 0 0; display: grid; place-content: center; gap: 8px; text-align: center;
-      font: 15px -apple-system, system-ui, sans-serif; color: #c8ccd4; z-index: 2147482000;
+      font: 15px -apple-system, system-ui, sans-serif; color: #c8ccd4; background: #000; z-index: 2147482000;
     }
     #nba-msg b { color: #fff; font-size: 18px; }
   `;
@@ -177,15 +182,20 @@
     new MutationObserver(fit).observe(document.documentElement, { attributes: true, attributeFilter: ["style"] });
     fit();
 
-    const checkStream = () => document.querySelector("#iframe");
+    // StreamEast serves both iframe embeds and inline Clappr/HLS players.
+    // #se-player-root only contains the site's source picker on HLS pages;
+    // the video itself is mounted in its sibling #VideoFrame.
+    const checkStream = () => document.querySelector("#iframe, #VideoFrame");
 
     if (!checkStream()) {
       const msg = document.createElement("div");
       msg.id = "nba-msg";
       const head = document.createElement("b");
-      head.textContent = "No stream here yet";
+      head.textContent = "No stream on this server";
       const sub = document.createElement("span");
-      sub.textContent = "Streams usually start shortly before tip-off. Try another server, or Reload.";
+      sub.textContent = cfg.live
+        ? "This game is live, but this server has no stream. Try another server, or Reload."
+        : "Streams usually start shortly before tip-off. Try another server, or Reload.";
       msg.append(head, sub);
       document.body.append(msg);
 

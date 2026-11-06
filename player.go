@@ -12,8 +12,8 @@ import (
 )
 
 // playerScript runs in the game's page before the site's own scripts: it
-// blocks third-party scripts, leaves only the video on screen and adds a
-// bar to switch servers.
+// blocks ads while keeping the player's libraries, leaves only the video
+// on screen and adds a bar to switch servers.
 //
 //go:embed player.js
 var playerScript string
@@ -39,7 +39,7 @@ func openPlayer(site string, game Game, server int, picked func(server int)) {
 	}
 	p := findProvider(siteURL.Host)
 	gameURL := p.GameURL(site, game, server)
-	config, _ := json.Marshal(map[string]string{"title": game.Away.Name + " @ " + game.Home.Name, "path": game.Path})
+	config, _ := json.Marshal(map[string]any{"title": game.Away.Name + " @ " + game.Home.Name, "path": game.Path, "live": game.Live})
 	win := mygo.NewWindow(mygo.WindowOptions{
 		Title:           game.Title(),
 		Width:           1280,
